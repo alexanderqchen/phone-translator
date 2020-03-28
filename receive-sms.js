@@ -1,13 +1,13 @@
 const http = require("http");
 const express = require("express");
+const bodyParser = require("body-parser");
 const MessagingResponse = require("twilio").twiml.MessagingResponse;
 
 const app = express();
+app.use(bodyParser.urlencoded({ extended: false }));
 
 app.post("/sms", (req, res) => {
-  console.log(req.params);
-  console.log(req.body);
-  console.log(req.data);
+  console.log(req.body.Body);
   const twiml = new MessagingResponse();
 
   twiml.message("The Robots are coming! Head for the hills!");

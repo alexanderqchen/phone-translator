@@ -1,5 +1,5 @@
 process.env.GOOGLE_APPLICATION_CREDENTIALS =
-  "./phone-translator-55e02993bd2f.json";
+  "../phone-translator-55e02993bd2f.json";
 
 const { Translate } = require("@google-cloud/translate").v2;
 

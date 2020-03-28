@@ -1,4 +1,4 @@
-const { accountSid, authToken } = require("./config.js");
+const { accountSid, authToken } = require("../config.js");
 const client = require("twilio")(accountSid, authToken);
 
 client.messages

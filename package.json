@@ -5,5 +5,13 @@
   "repository": "https://github.com/alexanderqchen/phone-translator",
   "author": "Alexander Chen",
   "license": "MIT",
-  "private": false
+  "private": false,
+  "dependencies": {
+    "@google-cloud/translate": "^5.3.0",
+    "express": "^4.17.1",
+    "twilio": "^3.41.1"
+  },
+  "scripts": {
+    "start": "node index.js"
+  }
 }

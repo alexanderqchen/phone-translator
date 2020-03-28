@@ -1,10 +1,10 @@
 const { accountSid, authToken } = require("./config.js");
 const client = require("twilio")(accountSid, authToken);
 
-client.calls
+client.messages
   .create({
-    twiml: "<Response><Say>Ahoy, World!</Say></Response>",
+    body: "This is the ship that made the Kessel Run in fourteen parsecs?",
     to: "+17134098344",
     from: "+14133411614"
   })
-  .then(call => console.log(call.sid));
+  .then(message => console.log(message.sid));

@@ -25,7 +25,9 @@ const recordName = twiml => {
   });
 };
 
-app.post("/voice", (req, res) => {
+app.post("/initiate", (req, res) => {
+  console.log(req.body.Caller);
+
   const twiml = new VoiceResponse();
 
   if (req.body.Digits !== undefined) {

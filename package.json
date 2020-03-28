@@ -1,0 +1,9 @@
+{
+  "name": "phone-translator",
+  "version": "1.0.0",
+  "main": "index.js",
+  "repository": "https://github.com/alexanderqchen/phone-translator",
+  "author": "Alexander Chen",
+  "license": "MIT",
+  "private": false
+}

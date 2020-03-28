@@ -17,12 +17,13 @@ const gatherPhoneNumber = twiml => {
 };
 
 const recordName = twiml => {
-  twiml.say("What is your name?");
-  twiml.record({
-    transcribe: true,
-    transcribeCallback: "/handle",
-    finishOnKey: "*"
+  const gather = twiml.gather({
+    input: "speech",
+    action: "/handle",
+    finishOnKey: "*",
+    language: "es-MX"
   });
+  gather.say("What do you want to say?");
 };
 
 app.post("/initiate", (req, res) => {
@@ -44,7 +45,9 @@ app.post("/initiate", (req, res) => {
     twiml.pause({ length: 10 });
     twiml.redirect("/voice");
   } else {
-    twiml.say(transcription);
+    console.log(1);
+    twiml.say({ language: "es-MX" }, transcription);
+    twiml.redirect("/initiate");
     toNumber = undefined;
     recordingInitiated = false;
     recordingFinished = false;
@@ -56,7 +59,13 @@ app.post("/initiate", (req, res) => {
 
 app.post("/handle", (req, res) => {
   recordingFinished = true;
-  transcription = req.body.TranscriptionText;
+  transcription = req.body.SpeechResult;
+  console.log(transcription);
+
+  const twiml = new VoiceResponse();
+  twiml.redirect("/initiate");
+  res.writeHead(200, { "Content-Type": "text/xml" });
+  res.end(twiml.toString());
 });
 
 http.createServer(app).listen(1337, () => {

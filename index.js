@@ -8,10 +8,18 @@ const { Translate } = require("@google-cloud/translate").v2;
 
 const gl1 = "en";
 const gl2 = "es";
-// const gl2 = "fr";
 const tl1 = "en-US";
-// const tl2 = "fr-FR";
 const tl2 = "es-MX";
+
+const MESSAGE_GET_NUMBER = "What phone number would you like to call?";
+const MESSAGE_GET_NUMBER_DONE = "Connecting you right now.";
+const MESSAGE_GET_SENTENCE = "What do you want to say?";
+const MESSAGE_CONNECTED = "Connected to call";
+const MESSAGE_WAIT_RESPONSE = "Waiting for a response.";
+const MESSAGE_WAIT_PROCESSING =
+  "Wait a moment while your response is being processed.";
+const MESSAGE_DONT_UNDERSTAND = "Sorry I did not understand you.";
+const MESSAGE_SENDING = "Sending your message. Please wait.";
 
 const app = express();
 app.use(bodyParser.urlencoded({ extended: false }));
@@ -35,31 +43,57 @@ let transcription2;
 
 let turn = 1;
 
-const gatherPhoneNumber = twiml => {
-  const gather = twiml.gather({ numDigits: 10 });
-  gather.say("What phone number would you like to call?");
-  twiml.say("Connecting you right now.");
+const SayMessage = async (twiml, language, message) => {
+  try {
+    if (language !== "en-US") {
+      if (language === tl1) {
+        [message] = await translate.translate(message, gl1);
+      } else {
+        [message] = await translate.translate(message, gl2);
+      }
+    }
+
+    twiml.say({ language }, message);
+  } catch (e) {
+    console.log(e);
+  }
 };
 
-const receiveCall = twiml => {
-  twiml.redirect("https://764009ce.ngrok.io/voice");
-};
-
-const recordSentence = twiml => {
-  const gather = twiml.gather({
+const Gather = (twiml, language) => {
+  return twiml.gather({
     input: "speech",
     action: "/handle",
     finishOnKey: "*",
-    language: turn === 1 ? tl1 : tl2
+    language: language
   });
-  gather.say("What do you want to say?");
+};
 
-  // twiml.say("What do you want to say?");
-  // twiml.record({
-  //   transcribe: true,
-  //   transcribeCallback: "/handle",
-  //   finishOnKey: "*"
-  // });
+const receiveCall = twiml => {
+  twiml.redirect("https://5990fc0a.ngrok.io/voice");
+};
+
+const gatherPhoneNumber = async twiml => {
+  try {
+    const gather = twiml.gather({ numDigits: 10 });
+    await SayMessage(gather, tl1, MESSAGE_GET_NUMBER);
+    await SayMessage(twiml, tl1, MESSAGE_GET_NUMBER_DONE);
+  } catch (e) {
+    console.log(e);
+  }
+};
+
+const recordSentence = async twiml => {
+  try {
+    if (turn === 1) {
+      const gather = Gather(twiml, tl1);
+      await SayMessage(gather, tl1, MESSAGE_GET_SENTENCE);
+    } else {
+      const gather = Gather(twiml, tl2);
+      await SayMessage(gather, tl2, MESSAGE_GET_SENTENCE);
+    }
+  } catch (e) {
+    console.log(e);
+  }
 };
 
 app.post("/initiate", async (req, res) => {
@@ -70,11 +104,13 @@ app.post("/initiate", async (req, res) => {
   }
 
   if (toNumber === undefined) {
-    gatherPhoneNumber(twiml);
+    await gatherPhoneNumber(twiml);
   } else if (!callAnswered) {
     try {
       const twiml2 = new VoiceResponse();
       receiveCall(twiml2);
+
+      console.log("call");
 
       await client.calls.create({
         twiml: twiml2.toString(),
@@ -91,82 +127,86 @@ app.post("/initiate", async (req, res) => {
   res.end(twiml.toString());
 });
 
-app.post("/voice", (req, res) => {
-  const twiml = new VoiceResponse();
+app.post("/voice", async (req, res) => {
+  try {
+    const twiml = new VoiceResponse();
 
-  if (req.body.Called === "+1" + toNumber) {
-    // callee
-    if (!callAnswered) {
-      twiml.pause({ length: 3 });
-      twiml.say("Connected to call");
-      twiml.redirect("/voice");
-      callAnswered = true;
-    } else if (turn !== 2) {
-      twiml.say("Waiting for a response.");
-      twiml.pause({ length: 5 });
-      twiml.redirect("/voice");
-    } else if (transcription1 !== undefined) {
-      twiml.say({ language: tl2 }, transcription1);
-      twiml.redirect("/voice");
-      transcription1 = undefined;
-    } else if (!recordingInitiated2) {
-      recordingInitiated2 = true;
-      recordSentence(twiml);
-    } else if (!recordingFinished2) {
-      twiml.say("Wait a moment while your response is being processed.");
-      twiml.pause({ length: 5 });
-      twiml.redirect("/voice");
-    } else {
-      if (transcription2 === undefined) {
-        twiml.say("Sorry I did not understand you.");
+    if (req.body.Called === "+1" + toNumber) {
+      // callee
+      if (!callAnswered) {
+        twiml.pause({ length: 3 });
+        await SayMessage(twiml, tl2, MESSAGE_CONNECTED);
         twiml.redirect("/voice");
-        recordingInitiated2 = false;
-        recordingFinished2 = false;
-      } else {
-        twiml.say("Sending your message. Please wait.");
+        callAnswered = true;
+      } else if (turn !== 2) {
+        await SayMessage(twiml, tl2, MESSAGE_WAIT_RESPONSE);
         twiml.pause({ length: 5 });
         twiml.redirect("/voice");
-        recordingInitiated2 = false;
-        recordingFinished2 = false;
-        turn = 1;
-      }
-    }
-  } else {
-    // caller
-    if (turn !== 1) {
-      twiml.say("Waiting for a response.");
-      twiml.pause({ length: 5 });
-      twiml.redirect("/voice");
-    } else if (transcription2 !== undefined) {
-      twiml.say({ language: tl1 }, transcription2);
-      twiml.redirect("/voice");
-      transcription2 = undefined;
-    } else if (!recordingInitiated1) {
-      recordingInitiated1 = true;
-      recordSentence(twiml);
-    } else if (!recordingFinished1) {
-      twiml.say("Wait a moment while your response is being processed.");
-      twiml.pause({ length: 5 });
-      twiml.redirect("/voice");
-    } else {
-      if (transcription1 === undefined) {
-        twiml.say("Sorry I did not understand you.");
+      } else if (transcription1 !== undefined) {
+        twiml.say({ language: tl2 }, transcription1);
         twiml.redirect("/voice");
-        recordingInitiated1 = false;
-        recordingFinished1 = false;
-      } else {
-        twiml.say("Sending your message. Please wait.");
+        transcription1 = undefined;
+      } else if (!recordingInitiated2) {
+        recordingInitiated2 = true;
+        await recordSentence(twiml);
+      } else if (!recordingFinished2) {
+        await SayMessage(twiml, tl2, MESSAGE_WAIT_PROCESSING);
         twiml.pause({ length: 5 });
         twiml.redirect("/voice");
-        recordingInitiated1 = false;
-        recordingFinished1 = false;
-        turn = 2;
+      } else {
+        if (transcription2 === undefined) {
+          await SayMessage(twiml, tl2, MESSAGE_DONT_UNDERSTAND);
+          twiml.redirect("/voice");
+          recordingInitiated2 = false;
+          recordingFinished2 = false;
+        } else {
+          await SayMessage(twiml, tl2, MESSAGE_SENDING);
+          twiml.pause({ length: 5 });
+          twiml.redirect("/voice");
+          recordingInitiated2 = false;
+          recordingFinished2 = false;
+          turn = 1;
+        }
+      }
+    } else {
+      // caller
+      if (turn !== 1) {
+        await SayMessage(twiml, tl1, MESSAGE_WAIT_RESPONSE);
+        twiml.pause({ length: 5 });
+        twiml.redirect("/voice");
+      } else if (transcription2 !== undefined) {
+        twiml.say({ language: tl1 }, transcription2);
+        twiml.redirect("/voice");
+        transcription2 = undefined;
+      } else if (!recordingInitiated1) {
+        recordingInitiated1 = true;
+        await recordSentence(twiml);
+      } else if (!recordingFinished1) {
+        await SayMessage(twiml, tl1, MESSAGE_WAIT_PROCESSING);
+        twiml.pause({ length: 5 });
+        twiml.redirect("/voice");
+      } else {
+        if (transcription1 === undefined) {
+          await SayMessage(twiml, tl1, MESSAGE_DONT_UNDERSTAND);
+          twiml.redirect("/voice");
+          recordingInitiated1 = false;
+          recordingFinished1 = false;
+        } else {
+          await SayMessage(twiml, tl1, MESSAGE_SENDING);
+          twiml.pause({ length: 5 });
+          twiml.redirect("/voice");
+          recordingInitiated1 = false;
+          recordingFinished1 = false;
+          turn = 2;
+        }
       }
     }
+
+    res.writeHead(200, { "Content-Type": "text/xml" });
+    res.end(twiml.toString());
+  } catch (e) {
+    console.log(e);
   }
-
-  res.writeHead(200, { "Content-Type": "text/xml" });
-  res.end(twiml.toString());
 });
 
 app.post("/handle", async (req, res) => {

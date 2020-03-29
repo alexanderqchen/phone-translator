@@ -6,10 +6,11 @@ const { accountSid, authToken } = require("./config.js");
 const client = require("twilio")(accountSid, authToken);
 const { Translate } = require("@google-cloud/translate").v2;
 
-const gl1 = "en";
-const gl2 = "es";
-const tl1 = "en-US";
-const tl2 = "es-MX";
+const gl1 = "es";
+const gl2 = "fr";
+const tl1 = "es-MX";
+const tl2 = "fr-FR";
+const tlg2 = "fr-FR";
 
 const MESSAGE_GET_NUMBER = "What phone number would you like to call?";
 const MESSAGE_GET_NUMBER_DONE = "Connecting you right now.";
@@ -26,7 +27,7 @@ app.use(bodyParser.urlencoded({ extended: false }));
 
 process.env.GOOGLE_APPLICATION_CREDENTIALS =
   "./phone-translator-55e02993bd2f.json";
-const translate = new Translate();
+let translate = new Translate();
 
 const twilioNumber = "+15054126310";
 
@@ -69,7 +70,7 @@ const Gather = (twiml, language) => {
 };
 
 const receiveCall = twiml => {
-  twiml.redirect("https://5990fc0a.ngrok.io/voice");
+  twiml.redirect("https://bc1f9cd8.ngrok.io/voice");
 };
 
 const gatherPhoneNumber = async twiml => {
@@ -88,7 +89,7 @@ const recordSentence = async twiml => {
       const gather = Gather(twiml, tl1);
       await SayMessage(gather, tl1, MESSAGE_GET_SENTENCE);
     } else {
-      const gather = Gather(twiml, tl2);
+      const gather = Gather(twiml, tlg2);
       await SayMessage(gather, tl2, MESSAGE_GET_SENTENCE);
     }
   } catch (e) {
@@ -109,8 +110,6 @@ app.post("/initiate", async (req, res) => {
     try {
       const twiml2 = new VoiceResponse();
       receiveCall(twiml2);
-
-      console.log("call");
 
       await client.calls.create({
         twiml: twiml2.toString(),
